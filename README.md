@@ -1,4 +1,4 @@
-﻿# Fault-Tolerant Distributed Java Compile-and-Run Service
+# Fault-Tolerant Distributed Java Compile-and-Run Service
 
 A small ZooKeeper-style cluster. Clients send Java source code over HTTP to a **gateway**. The gateway passes each job to the cluster's elected **leader**. The leader hands jobs out round-robin to **followers**, which compile and run the code and send the output back the same way.
 
@@ -171,21 +171,26 @@ A mutable `int` holder that the worker classes use for status codes from helper 
 
 ## 5. Lifecycle of a request
 
-```
-Client          Gateway                     Leader                     Follower
-  â”‚ POST src  â”€â”€â–ºâ”‚                              â”‚                          â”‚
-  â”‚              â”‚ wait for currentLeader       â”‚                          â”‚
-  â”‚              â”‚ requestID = id++             â”‚                          â”‚
-  â”‚              â”‚â”€â”€ TCP WORK(id) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–ºâ”‚                          â”‚
-  â”‚              â”‚                              â”‚ Allocjob â†’ pick worker   â”‚
-  â”‚              â”‚                              â”‚â”€â”€ TCP WORK(id) â”€â”€â”€â”€â”€â”€â”€â”€â”€â–ºâ”‚
-  â”‚              â”‚                              â”‚                          â”‚ JavaRunner.compileAndRun
-  â”‚              â”‚                              â”‚â—„â”€â”€ TCP COMPLETED_WORK(id)â”‚ deliverResult
-  â”‚              â”‚â—„â”€â”€ TCP COMPLETED_WORK(id) â”€â”€â”€â”‚ freeJob, sendToGateWay   â”‚
-  â”‚              â”‚ requestrespons[req] = out    â”‚                          â”‚
-  â”‚â—„â”€ 200 out â”€â”€â”€â”‚                              â”‚                          â”‚
-```
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gateway
+    participant L as Leader
+    participant F as Follower
 
+    C->>G: POST source
+    G->>G: Wait for current leader
+    G->>G: Assign requestID
+    G->>L: TCP WORK(requestID)
+    L->>L: Allocate job and choose worker
+    L->>F: TCP WORK(requestID)
+    F->>F: JavaRunner.compileAndRun
+    F->>L: TCP COMPLETED_WORK(requestID)
+    L->>L: Free job and forward result
+    L->>G: TCP COMPLETED_WORK(requestID)
+    G->>G: Store result for waiting request
+    G->>C: HTTP 200 with output
+```
 ---
 
 ## 6. Leader election

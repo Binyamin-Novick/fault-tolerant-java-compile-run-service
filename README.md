@@ -4,7 +4,7 @@ A small ZooKeeper-style cluster. Clients send Java source code over HTTP to a **
 
 Servers find out about failures through **gossip heartbeats**. When the leader dies, the remaining servers elect a new one with a simplified **ZooKeeper Fast Leader Election**. The gateway sends new work to the new leader, and results that were finished under the old leader are delivered through the new one.
 
-For the list of fault-tolerance bug fixes and why each was needed, see [`CHANGES.md`](CHANGES.md).
+
 
 ---
 

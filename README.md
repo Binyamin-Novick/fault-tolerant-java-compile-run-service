@@ -25,27 +25,19 @@ For the list of fault-tolerance bug fixes and why each was needed, see [`CHANGES
 
 ## 1. Architecture
 
-```
-                 HTTP POST /compileandrun
-   Client  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–º  GatewayServer (HTTP :8888)
-                                               â”‚
-                                               â”‚ owns
-                                               â–¼
-                                       GatewayPeerServerImpl  (OBSERVER, id 42, UDP :9999)
-                                               â”‚   â–²
-                                 TCP WORK      â”‚   â”‚ TCP COMPLETED_WORK
-                                               â–¼   â”‚
-                                    â”Œâ”€â”€â”€â”€ Leader (PeerServerImpl, LEADING) â”€â”€â”€â”€â”
-                                    â”‚        RoundRobinLeader                  â”‚
-                         TCP WORK   â”‚                                          â”‚ TCP WORK
-                                    â–¼                                          â–¼
-                     Follower (FOLLOWING)                          Follower (FOLLOWING)
-                     JavaRunnerFollower                            JavaRunnerFollower
-                       â””â”€ JavaRunner (compile + run)                â””â”€ JavaRunner
-
-   All servers, including the gateway, also exchange over UDP:
-     â€¢ ELECTION / NEW_LEADER_GETTING_LAST_WORK messages (leader election)
-     â€¢ GOSSIP heartbeats (failure detection)
+```mermaid
+flowchart TB
+    Client -- "HTTP POST /compileandrun" --> GatewayHTTP["GatewayServer<br/>HTTP :8888"]
+    GatewayHTTP --- GatewayPeer["GatewayPeerServerImpl<br/>OBSERVER, id 42, UDP :9999"]
+    GatewayPeer -- "TCP WORK" --> Leader["Leader<br/>PeerServerImpl (LEADING)<br/>RoundRobinLeader"]
+    Leader -- "TCP WORK" --> Follower1["Follower (FOLLOWING)<br/>JavaRunnerFollower<br/>JavaRunner (compile + run)"]
+    Leader -- "TCP WORK" --> Follower2["Follower (FOLLOWING)<br/>JavaRunnerFollower<br/>JavaRunner (compile + run)"]
+    Follower1 -- "TCP COMPLETED_WORK" --> Leader
+    Follower2 -- "TCP COMPLETED_WORK" --> Leader
+    Leader -- "TCP COMPLETED_WORK" --> GatewayPeer
+    GatewayPeer -. "UDP: ELECTION / NEW_LEADER_GETTING_LAST_WORK and GOSSIP" .-> Leader
+    GatewayPeer -. "UDP: election and gossip" .-> Follower1
+    GatewayPeer -. "UDP: election and gossip" .-> Follower2
 ```
 
 ### Roles (`PeerServer.ServerState`)
